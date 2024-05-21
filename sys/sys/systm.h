@@ -176,7 +176,10 @@ void	kassert_panic(const char *fmt, ...)  __printflike(1, 2);
 #ifdef _KERNEL
 #include <sys/param.h>		/* MAXCPU */
 #include <sys/pcpu.h>		/* curthread */
+
+#ifndef CONFIG_LAZYBSD
 #include <sys/kpilite.h>
+#endif /* CONFIG_LAZYBSD */
 
 /*
  * Assert that a pointer can be loaded from memory atomically.
@@ -280,16 +283,19 @@ int linux_alloc_current_noop(struct thread *, int);
 static __inline void
 critical_enter(void)
 {
+#ifndef CONFIG_LAZYBSD
 	struct thread_lite *td;
 
 	td = (struct thread_lite *)curthread;
 	td->td_critnest++;
 	atomic_interrupt_fence();
+#endif /* CONFIG_LAZYBSD */
 }
 
 static __inline void
 critical_exit(void)
 {
+#ifndef CONFIG_LAZYBSD
 	struct thread_lite *td;
 
 	td = (struct thread_lite *)curthread;
@@ -300,7 +306,7 @@ critical_exit(void)
 	atomic_interrupt_fence();
 	if (__predict_false(td->td_owepreempt))
 		critical_exit_preempt();
-
+#endif /* CONFIG_LAZYBSD */
 }
 #endif
 
