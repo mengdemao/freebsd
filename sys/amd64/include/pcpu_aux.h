@@ -56,7 +56,10 @@ __curthread(void)
 	    pc_curthread)));
 	return (td);
 }
+
+#ifndef CONFIG_LAZYBSD
 #define	curthread		(__curthread())
+#endif /* CONFIG_LAZYBSD */
 #define	curpcb			(&curthread->td_md.md_pcb)
 
 #endif	/* _MACHINE_PCPU_AUX_H_ */

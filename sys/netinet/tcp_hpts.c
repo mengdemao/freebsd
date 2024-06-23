@@ -188,10 +188,14 @@ __FBSDID("$FreeBSD$");
 #endif
 
 MALLOC_DEFINE(M_TCPHPTS, "tcp_hpts", "TCP hpts");
+#ifndef CONFIG_LAZYBSD
 #ifdef RSS
 static int tcp_bind_threads = 1;
 #else
 static int tcp_bind_threads = 2;
+#endif
+#else
+static int tcp_bind_threads = 1;
 #endif
 TUNABLE_INT("net.inet.tcp.bind_hptss", &tcp_bind_threads);
 
@@ -206,7 +210,11 @@ static void tcp_hpts_thread(void *ctx);
 static void tcp_init_hptsi(void *st);
 
 int32_t tcp_min_hptsi_time = DEFAULT_MIN_SLEEP;
+#ifndef CONFIG_LAZYBSD
 static int32_t tcp_hpts_callout_skip_swi = 0;
+#else
+static int32_t tcp_hpts_callout_skip_swi = 1;
+#endif
 
 SYSCTL_NODE(_net_inet_tcp, OID_AUTO, hpts, CTLFLAG_RW | CTLFLAG_MPSAFE, 0,
     "TCP Hpts controls");
@@ -1971,6 +1979,7 @@ tcp_init_hptsi(void *st)
 			if (intr_event_bind(hpts->ie, i) == 0)
 				bound++;
 		} else if (tcp_bind_threads == 2) {
+#ifndef CONFIG_LAZYBSD
 			pc = pcpu_find(i);
 			domain = pc->pc_domain;
 			CPU_COPY(&cpuset_domain[domain], &cs);
@@ -1981,6 +1990,7 @@ tcp_init_hptsi(void *st)
 				hpts_domains[domain].cpu[count] = i;
 				hpts_domains[domain].count++;
 			}
+#endif /* CONFIG_LAZYBSD */
 		}
 		tv.tv_sec = 0;
 		tv.tv_usec = hpts->p_hpts_sleep_time * HPTS_TICKS_PER_USEC;

@@ -1547,6 +1547,7 @@ tcp_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 	INP_WLOCK_ASSERT(inp);
 	INP_HASH_WLOCK(&V_tcbinfo);
 
+#ifndef CONFIG_LAZYBSD
 	if (V_tcp_require_unique_port && inp->inp_lport == 0) {
 		error = in_pcbbind(inp, (struct sockaddr *)0, td->td_ucred);
 		if (error)
@@ -1579,6 +1580,54 @@ tcp_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 	}
 	inp->inp_laddr = laddr;
 	in_pcbrehash(inp);
+#else
+	int anonport = 0;
+	if (inp->inp_lport == 0) {
+		anonport = 1;
+	}
+
+	laddr = inp->inp_laddr;
+	lport = inp->inp_lport;
+	error = in_pcbconnect_setup(inp, nam, &laddr.s_addr, &lport,
+	    &inp->inp_faddr.s_addr, &inp->inp_fport, &oinp, td->td_ucred);
+	if (error && oinp == NULL)
+		goto out;
+	if (oinp) {
+		error = EADDRINUSE;
+		goto out;
+	}
+
+	inp->inp_laddr = laddr;
+
+	if (inp->inp_lport != lport) {
+		inp->inp_lport = lport;
+		oinp = in_pcblookup(inp->inp_pcbinfo, inp->inp_faddr,
+		    inp->inp_fport, laddr, lport, 0, NULL);
+		if (oinp != NULL) {
+			error = EADDRINUSE;
+			goto out;
+		}
+
+		// inp->inp_lport != lport means in_pcbconnect_setup selected new port to inp->inp_lport.
+		// inp will inhash.
+		if (in_pcbinshash(inp) != 0) {
+			inp->inp_laddr.s_addr = INADDR_ANY;
+			inp->inp_lport = 0;
+			return (EAGAIN);
+		}
+	}
+	else
+	{
+		// app call bind() and connect(), lport is set when bind, and the inp is inhashed in bind() function.
+		// in_pcbconnect_setup() update inp->inp_faddr/inp->inp_fport, so inp should be rehashed.
+		in_pcbrehash(inp);
+	}
+
+	if (anonport) {
+		inp->inp_flags |= INP_ANONPORT;
+	}
+#endif /* CONFIG_LAZYBSD */
+
 	INP_HASH_WUNLOCK(&V_tcbinfo);
 
 	/*

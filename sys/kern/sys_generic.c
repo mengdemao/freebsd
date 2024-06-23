@@ -362,7 +362,7 @@ dofileread(struct thread *td, int fd, struct file *fp, struct uio *auio,
 	auio->uio_offset = offset;
 	auio->uio_td = td;
 #ifdef KTRACE
-	if (KTRPOINT(td, KTR_GENIO)) 
+	if (KTRPOINT(td, KTR_GENIO))
 		ktruio = cloneuio(auio);
 #endif
 	cnt = auio->uio_resid;
@@ -970,7 +970,7 @@ kern_pselect(struct thread *td, int nd, fd_set *in, fd_set *ou, fd_set *ex,
     struct timeval *tvp, sigset_t *uset, int abi_nfdbits)
 {
 	int error;
-
+#ifndef CONFIG_LAZYBSD
 	if (uset != NULL) {
 		error = kern_sigprocmask(td, SIG_SETMASK, uset,
 		    &td->td_oldsigmask, 0);
@@ -986,6 +986,7 @@ kern_pselect(struct thread *td, int nd, fd_set *in, fd_set *ou, fd_set *ex,
 		td->td_flags |= TDF_ASTPENDING;
 		thread_unlock(td);
 	}
+#endif
 	error = kern_select(td, nd, in, ou, ex, tvp, abi_nfdbits);
 	return (error);
 }
@@ -1238,7 +1239,7 @@ done:
 
 	return (error);
 }
-/* 
+/*
  * Convert a select bit set to poll flags.
  *
  * The backend always returns POLLHUP/POLLERR if appropriate and we
@@ -1460,7 +1461,7 @@ kern_poll(struct thread *td, struct pollfd *ufds, u_int nfds,
 	 * least enough for the system-wide limits.  We want to be reasonably
 	 * safe, but not overly restrictive.
 	 */
-	if (nfds > maxfilesperproc && nfds > FD_SETSIZE) 
+	if (nfds > maxfilesperproc && nfds > FD_SETSIZE)
 		return (EINVAL);
 	if (nfds > nitems(stackfds))
 		kfds = mallocarray(nfds, sizeof(*kfds), M_TEMP, M_WAITOK);
@@ -1470,6 +1471,7 @@ kern_poll(struct thread *td, struct pollfd *ufds, u_int nfds,
 	if (error)
 		goto done;
 
+#ifndef CONFIG_LAZYBSD
 	if (uset != NULL) {
 		error = kern_sigprocmask(td, SIG_SETMASK, uset,
 		    &td->td_oldsigmask, 0);
@@ -1485,6 +1487,7 @@ kern_poll(struct thread *td, struct pollfd *ufds, u_int nfds,
 		td->td_flags |= TDF_ASTPENDING;
 		thread_unlock(td);
 	}
+#endif /* CONFIG_LAZYBSD */
 
 	seltdinit(td);
 	/* Iterate until the timeout expires or descriptors become ready. */
@@ -1684,7 +1687,7 @@ selsocket(struct socket *so, int events, struct timeval *tvp, struct thread *td)
 	precision = 0;	/* stupid gcc! */
 	if (tvp != NULL) {
 		rtv = *tvp;
-		if (rtv.tv_sec < 0 || rtv.tv_usec < 0 || 
+		if (rtv.tv_sec < 0 || rtv.tv_usec < 0 ||
 		    rtv.tv_usec >= 1000000)
 			return (EINVAL);
 		if (!timevalisset(&rtv))

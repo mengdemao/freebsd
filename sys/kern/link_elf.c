@@ -636,8 +636,11 @@ parse_dynamic(elf_file_t ef)
 	ef->ddbsymcnt = ef->nchains;
 	ef->ddbstrtab = ef->strtab;
 	ef->ddbstrcnt = ef->strsz;
-
+#ifndef CONFIG_LAZYBSD
 	return elf_cpu_parse_dynamic(ef->address, ef->dynamic);
+#else
+	return 0;
+#endif /* CONFIG_LAZYBSD */
 }
 
 #define	LS_PADDING	0x90909090

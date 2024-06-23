@@ -70,12 +70,14 @@
 #define	SGROWSIZ	(128UL*1024)		/* amount to grow stack */
 #endif
 
+#ifndef CONFIG_LAZYBSD
 /*
  * We provide a machine specific single page allocator through the use
  * of the direct mapped segment.  This uses 2MB pages for reduced
  * TLB pressure.
  */
 #define	UMA_MD_SMALL_ALLOC
+#endif /* CONFIG_LAZYBSD */
 
 /*
  * The physical address space is densely populated.
@@ -86,7 +88,7 @@
  * The number of PHYSSEG entries must be one greater than the number
  * of phys_avail entries because the phys_avail entry that spans the
  * largest physical address that is accessible by ISA DMA is split
- * into two PHYSSEG entries. 
+ * into two PHYSSEG entries.
  */
 #define	VM_PHYSSEG_MAX		63
 

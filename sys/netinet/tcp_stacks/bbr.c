@@ -147,6 +147,11 @@ struct sysctl_oid *bbr_sysctl_root;
 
 /*#define BBR_INVARIANT 1*/
 
+#ifdef CONFIG_LAZYBSD
+#define MODNAME tcp_bbr
+#define STACKNAME bbr
+#endif /* CONFIG_LAZYBSD */
+
 /*
  * initial window
  */

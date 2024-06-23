@@ -1627,6 +1627,7 @@ nospace:
 
 #endif
 
+#ifndef CONFIG_LAZYBSD
 /*
  * Free pages from mbuf_ext_pgs, assuming they were allocated via
  * vm_page_alloc() and aren't associated with any object.  Complement
@@ -1730,6 +1731,7 @@ failed:
 	m_freem(m);
 	return (NULL);
 }
+#endif
 
 /*
  * Copy the contents of uio into a properly sized mbuf chain.
@@ -1741,10 +1743,10 @@ m_uiotombuf(struct uio *uio, int how, int len, int align, int flags)
 	int error, length;
 	ssize_t total;
 	int progress = 0;
-
+#ifndef CONFIG_LAZYBSD
 	if (flags & M_EXTPG)
 		return (m_uiotombuf_nomap(uio, how, len, align, flags));
-
+#endif /* CONFIG_LAZYBSD */
 	/*
 	 * len can be zero or an arbitrary large value bound by
 	 * the total data supplied by the uio.
@@ -1790,6 +1792,7 @@ m_uiotombuf(struct uio *uio, int how, int len, int align, int flags)
 	return (m);
 }
 
+#ifndef CONFIG_LAZYBSD
 /*
  * Copy data from an unmapped mbuf into a uio limited by len if set.
  */
@@ -1845,6 +1848,13 @@ m_unmappedtouio(const struct mbuf *m, int m_off, struct uio *uio, int len)
 	}
 	return (error);
 }
+#else
+int
+m_unmappedtouio(const struct mbuf *m, int m_off, struct uio *uio, int len)
+{
+    return uiomove(mtod(m, void *), len, uio);
+}
+#endif
 
 /*
  * Copy an mbuf chain into a uio limited by len if set.

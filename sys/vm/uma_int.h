@@ -35,12 +35,12 @@
 #include <sys/_domainset.h>
 #include <sys/_task.h>
 
-/* 
+/*
  * This file includes definitions, structures, prototypes, and inlines that
  * should not be used outside of the actual implementation of UMA.
  */
 
-/* 
+/*
  * The brief summary;  Zones describe unique allocation types.  Zones are
  * organized into per-CPU caches which are filled by buckets.  Buckets are
  * organized according to memory domains.  Buckets are filled from kegs which
@@ -71,19 +71,19 @@
  * prefer location allocation.  However there is no strict enforcement as frees
  * may happen on any CPU and these are returned to the CPU-local cache
  * regardless of the originating domain.
- *  
+ *
  * The uma_slab_t may be embedded in a UMA_SLAB_SIZE chunk of memory or it may
  * be allocated off the page from a special slab zone.  The free list within a
  * slab is managed with a bitmask.  For item sizes that would yield more than
  * 10% memory waste we potentially allocate a separate uma_slab_t if this will
- * improve the number of items per slab that will fit.  
+ * improve the number of items per slab that will fit.
  *
  * The only really gross cases, with regards to memory waste, are for those
  * items that are just over half the page size.   You can get nearly 50% waste,
  * so you fall back to the memory footprint of the power of two allocator. I
  * have looked at memory allocation sizes on many of the machines available to
  * me, and there does not seem to be an abundance of allocations at this range
- * so at this time it may not make sense to optimize for it.  This can, of 
+ * so at this time it may not make sense to optimize for it.  This can, of
  * course, be solved with dynamic slab sizes.
  *
  * Kegs may serve multiple Zones but by far most of the time they only serve
@@ -112,7 +112,7 @@
  *	___________________________________________________________
  *     | _  _  _  _  _  _  _  _  _  _  _  _  _  _  _   ___________ |
  *     ||i||i||i||i||i||i||i||i||i||i||i||i||i||i||i| |slab header||
- *     ||_||_||_||_||_||_||_||_||_||_||_||_||_||_||_| |___________|| 
+ *     ||_||_||_||_||_||_||_||_||_||_||_||_||_||_||_| |___________||
  *     |___________________________________________________________|
  *
  *
@@ -206,7 +206,7 @@
  * Only zones with memory not touchable by the allocator use the
  * hash table.  Otherwise slabs are found with vtoslab().
  */
-#define UMA_HASH_SIZE_INIT	32		
+#define UMA_HASH_SIZE_INIT	32
 
 #define UMA_HASH(h, s) ((((uintptr_t)s) >> UMA_SLAB_SHIFT) & (h)->uh_hashmask)
 
@@ -615,6 +615,7 @@ hash_sfind(struct uma_hash *hash, uint8_t *data)
         return (NULL);
 }
 
+#ifndef CONFIG_LAZYBSD
 static __inline uma_slab_t
 vtoslab(vm_offset_t va)
 {
@@ -643,6 +644,7 @@ vsetzoneslab(vm_offset_t va, uma_zone_t zone, uma_slab_t slab)
 	p->plinks.uma.slab = slab;
 	p->plinks.uma.zone = zone;
 }
+#endif /* CONFIG_LAZYBSD */
 
 extern unsigned long uma_kmem_limit;
 extern unsigned long uma_kmem_total;

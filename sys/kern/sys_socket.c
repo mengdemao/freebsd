@@ -95,10 +95,12 @@ static fo_poll_t soo_poll;
 extern fo_kqfilter_t soo_kqfilter;
 static fo_stat_t soo_stat;
 static fo_close_t soo_close;
+#ifndef CONFIG_LAZYBSD
 static fo_fill_kinfo_t soo_fill_kinfo;
 static fo_aio_queue_t soo_aio_queue;
 
 static void	soo_aio_cancel(struct kaiocb *job);
+#endif /* CONFIG_LAZYBSD */
 
 struct fileops	socketops = {
 	.fo_read = soo_read,
@@ -112,8 +114,10 @@ struct fileops	socketops = {
 	.fo_chmod = invfo_chmod,
 	.fo_chown = invfo_chown,
 	.fo_sendfile = invfo_sendfile,
+#ifndef CONFIG_LAZYBSD
 	.fo_fill_kinfo = soo_fill_kinfo,
 	.fo_aio_queue = soo_aio_queue,
+#endif /* CONFIG_LAZYBSD */
 	.fo_flags = DFLAG_PASSABLE
 };
 
@@ -362,6 +366,7 @@ soo_close(struct file *fp, struct thread *td)
 	return (error);
 }
 
+#ifndef CONFIG_LAZYBSD
 static int
 soo_fill_kinfo(struct file *fp, struct kinfo_file *kif, struct filedesc *fdp)
 {
@@ -427,7 +432,7 @@ soo_fill_kinfo(struct file *fp, struct kinfo_file *kif, struct filedesc *fdp)
 	strncpy(kif->kf_path, so->so_proto->pr_domain->dom_name,
 	    sizeof(kif->kf_path));
 	CURVNET_RESTORE();
-	return (0);	
+	return (0);
 }
 
 /*
@@ -678,7 +683,7 @@ retry:
 				SOCKBUF_UNLOCK(sb);
 				goto retry;
 			}
-			
+
 			if (!aio_set_cancel_function(job, soo_aio_cancel)) {
 				SOCKBUF_UNLOCK(sb);
 				if (done != 0)
@@ -692,7 +697,7 @@ retry:
 			return;
 		}
 		SOCKBUF_UNLOCK(sb);
-	}		
+	}
 	if (done != 0 && (error == ERESTART || error == EINTR ||
 	    error == EWOULDBLOCK))
 		error = 0;
@@ -832,3 +837,4 @@ soo_aio_queue(struct file *fp, struct kaiocb *job)
 	SOCKBUF_UNLOCK(sb);
 	return (0);
 }
+#endif /* CONFIG_LAZYBSD */

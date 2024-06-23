@@ -73,7 +73,12 @@ __FBSDID("$FreeBSD$");
 #include <security/audit/audit.h>
 #include <security/mac/mac_framework.h>
 
+#ifndef CONFIG_LAZYBSD
 static int sendit(struct thread *td, int s, struct msghdr *mp, int flags);
+else
+int sendit(struct thread *td, int s, struct msghdr *mp, int flags);
+#endif /* CONFIG_LAZYBSD */
+
 static int recvit(struct thread *td, int s, struct msghdr *mp, void *namelenp);
 
 static int accept1(struct thread *td, int s, struct sockaddr *uname,
@@ -618,7 +623,7 @@ kern_socketpair(struct thread *td, int domain, int type, int protocol,
 		struct unpcb *unp, *unp2;
 		unp = sotounpcb(so1);
 		unp2 = sotounpcb(so2);
-		/* 
+		/*
 		 * No need to lock the unps, because the sockets are brand-new.
 		 * No other threads can be using them yet
 		 */
@@ -667,7 +672,10 @@ sys_socketpair(struct thread *td, struct socketpair_args *uap)
 	return (error);
 }
 
-static int
+#ifndef CONFIG_LAZYBSD
+static
+#endif /* CONFIG_LAZYBSD */
+int
 sendit(struct thread *td, int s, struct msghdr *mp, int flags)
 {
 	struct mbuf *control;

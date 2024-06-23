@@ -454,7 +454,7 @@ iface_match(struct ifnet *ifp, ipfw_insn_if *cmd, struct ip_fw_chain *chain,
 /*
  * The verify_path function checks if a route to the src exists and
  * if it is reachable via ifp (when provided).
- * 
+ *
  * The 'verrevpath' option checks that the interface that an IP packet
  * arrives on is the same interface that traffic destined for the
  * packet's source address would be routed out of.
@@ -609,7 +609,9 @@ ipfw_send_abort(struct mbuf *replyto, struct ipfw_flow_id *id, u_int32_t vtag,
 	}
 	chunk->chunk_length = htons(sizeof(struct sctp_chunkhdr));
 
+#ifndef CONFIG_LAZYBSD /* Not support sctp now */
 	sctp->checksum = sctp_calculate_cksum(m, hlen);
+#endif
 
 	return (m);
 }
@@ -2620,7 +2622,7 @@ do {								\
 #ifndef USERSPACE	/* not supported in userspace */
 				struct inpcb *inp = args->inp;
 				struct inpcbinfo *pi;
-				
+
 				if (is_ipv6) /* XXX can we remove this ? */
 					break;
 
@@ -2638,10 +2640,10 @@ do {								\
 				 * certainly be inp_user_cookie?
 				 */
 
-				/* For incoming packet, lookup up the 
+				/* For incoming packet, lookup up the
 				inpcb using the src/dest ip/port tuple */
 				if (inp == NULL) {
-					inp = in_pcblookup(pi, 
+					inp = in_pcblookup(pi,
 						src_ip, htons(src_port),
 						dst_ip, htons(dst_port),
 						INPLOOKUP_RLOCKPCB, NULL);
@@ -2693,7 +2695,7 @@ do {								\
 				}
 				break;
 			}
-				
+
 			/*
 			 * The second set of opcodes represents 'actions',
 			 * i.e. the terminal part of a rule once the packet
@@ -2745,7 +2747,7 @@ do {								\
 			 *  is checked via dynamic rule from the state
 			 *  table, as in such case execution starts
 			 *  from the true 'action' opcode directly.
-			 *   
+			 *
 			 */
 			case O_LIMIT:
 			case O_KEEP_STATE:
@@ -3352,7 +3354,7 @@ ipfw_init(void)
 	 * Note: V_xxx variables can be accessed here but the vnet specific
 	 * initializer may not have been called yet for the VIMAGE case.
 	 * Tuneables will have been processed. We will print out values for
-	 * the default vnet. 
+	 * the default vnet.
 	 * XXX This should all be rationalized AFTER 8.0
 	 */
 	if (V_fw_verbose == 0)
@@ -3444,7 +3446,9 @@ vnet_ipfw_init(const void *unused)
 #ifdef LINEAR_SKIPTO
 	ipfw_init_skipto_cache(chain);
 #endif
+#ifndef CONFIG_LAZYBSD /* WITHOUT_BPF */
 	ipfw_bpf_init(first);
+#endif
 
 	/* First set up some values that are compile time options */
 	V_ipfw_vnet_ready = 1;		/* Open for business */
@@ -3514,7 +3518,9 @@ vnet_ipfw_uninit(const void *unused)
 	IPFW_LOCK_DESTROY(chain);
 	ipfw_dyn_uninit(1);	/* free the remaining parts */
 	ipfw_destroy_counters();
+#ifndef CONFIG_LAZYBSD /* WITHOUT_BPF */
 	ipfw_bpf_uninit(last);
+#endif
 	return (0);
 }
 

@@ -218,12 +218,13 @@ void	*malloc(size_t size, struct malloc_type *type, int flags) __malloc_like
  *
  * 	_malloc_item = malloc(_size, type, (flags) &~ M_ZERO);
  *	if (_malloc_item != NULL)
- *		bzero(_malloc_item, _size);			
+ *		bzero(_malloc_item, _size);
  *
  * The implementation is a macro because of what appears to be a clang 6 bug:
  * an inline function variant ended up being compiled to a mere malloc call
  * regardless of argument. gcc generates expected code (like the above).
  */
+#ifndef CONFIG_LAZYBSD
 #define	malloc(size, type, flags) ({					\
 	void *_malloc_item;						\
 	size_t _size = (size);						\
@@ -238,6 +239,7 @@ void	*malloc(size_t size, struct malloc_type *type, int flags) __malloc_like
 	}								\
 	_malloc_item;							\
 })
+#endif /* CONFIG_LAZYBSD */
 
 void	*malloc_domainset(size_t size, struct malloc_type *type,
 	    struct domainset *ds, int flags) __malloc_like __result_use_check

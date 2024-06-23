@@ -475,6 +475,7 @@ pfil_link_remove(pfil_chain_t *chain, pfil_hook_t hook)
 	return (NULL);
 }
 
+#ifndef CONFIG_LAZYBSD
 static void
 pfil_init(const void *unused __unused)
 {
@@ -495,6 +496,7 @@ pfil_init(const void *unused __unused)
  * might piggyback on the SI_SUB_PROTO_PFIL.
  */
 SYSINIT(pfil_init, SI_SUB_PROTO_PFIL, SI_ORDER_FIRST, pfil_init, NULL);
+#endif /* CONFIG_LAZYBSD */
 
 /*
  * User control interface.

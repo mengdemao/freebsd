@@ -280,9 +280,11 @@ epoch_init(void *arg __unused)
 	CPU_FOREACH(cpu) {
 		GROUPTASK_INIT(DPCPU_ID_PTR(cpu, epoch_cb_task), 0,
 		    epoch_call_task, NULL);
+#ifndef CONFIG_LAZYBSD
 		taskqgroup_attach_cpu(qgroup_softirq,
 		    DPCPU_ID_PTR(cpu, epoch_cb_task), NULL, cpu, NULL, NULL,
 		    "epoch call task");
+#endif /* CONFIG_LAZYBSD */
 	}
 #ifdef EPOCH_TRACE
 	SLIST_INIT(&thread0.td_epochs);

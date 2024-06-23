@@ -280,6 +280,7 @@ ngc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 		struct ngm_mkpeer *const mkp = (struct ngm_mkpeer *) msg->data;
 
 		if (ng_findtype(mkp->type) == NULL) {
+#ifndef CONFIG_LAZYBSD
 			char filename[NG_TYPESIZ + 3];
 			int fileid;
 
@@ -300,6 +301,10 @@ ngc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 				error =  ENXIO;
 				goto release;
 			}
+#else
+			error =  ENOENT;
+			goto release;
+#endif
 		}
 	}
 

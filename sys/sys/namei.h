@@ -274,6 +274,7 @@ do {										\
 
 void NDFREE_PNBUF(struct nameidata *);
 void NDFREE(struct nameidata *, const u_int);
+#ifndef CONFIG_LAZYBSD
 #define NDFREE(ndp, flags) do {						\
 	struct nameidata *_ndp = (ndp);					\
 	if (__builtin_constant_p(flags) && flags == NDF_ONLY_PNBUF)	\
@@ -281,6 +282,7 @@ void NDFREE(struct nameidata *, const u_int);
 	else								\
 		NDFREE(_ndp, flags);					\
 } while (0)
+#endif
 
 #ifdef INVARIANTS
 void NDFREE_NOTHING(struct nameidata *);

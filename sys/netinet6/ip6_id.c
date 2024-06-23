@@ -259,6 +259,7 @@ u_int32_t
 ip6_randomflowlabel(void)
 {
 
+#ifndef CONFIG_LAZYBSD
 	/*
 	 * It's ok to emit zero flow labels early, before random is available
 	 * (seeded).  RFC 6437:
@@ -268,6 +269,7 @@ ip6_randomflowlabel(void)
 	 */
 	if (__predict_false(!is_random_seeded()))
 		return (0);
+#endif
 
 	return randomid(&randomtab_20) & 0xfffff;
 }

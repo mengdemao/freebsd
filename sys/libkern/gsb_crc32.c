@@ -749,6 +749,7 @@ calculate_crc32c(uint32_t crc32c,
     const unsigned char *buffer,
     unsigned int length)
 {
+#ifndef CONFIG_LAZYBSD
 #ifdef _KERNEL
 #if defined(__amd64__) || defined(__i386__)
 	if ((cpu_feature2 & CPUID2_SSE42) != 0) {
@@ -761,6 +762,7 @@ calculate_crc32c(uint32_t crc32c,
 	} else
 #endif
 #endif /* _KERNEL */
+#endif /* CONFIG_LAZYBSD */
 	if (length < 4) {
 		return (singletable_crc32c(crc32c, buffer, length));
 	} else {

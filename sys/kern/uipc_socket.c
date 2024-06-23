@@ -425,8 +425,11 @@ soalloc(struct vnet *vnet)
 	sx_init(&so->so_rcv.sb_sx, "so_rcv_sx");
 	TAILQ_INIT(&so->so_snd.sb_aiojobq);
 	TAILQ_INIT(&so->so_rcv.sb_aiojobq);
+#ifndef CONFIG_LAZYBSD
 	TASK_INIT(&so->so_snd.sb_aiotask, 0, soaio_snd, so);
 	TASK_INIT(&so->so_rcv.sb_aiotask, 0, soaio_rcv, so);
+#endif /* CONFIG_LAZYBSD */
+
 #ifdef VIMAGE
 	VNET_ASSERT(vnet != NULL, ("%s:%d vnet is NULL, so=%p",
 	    __func__, __LINE__, so));

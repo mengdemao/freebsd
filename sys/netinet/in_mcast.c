@@ -709,7 +709,11 @@ inm_record_source(struct in_multi *inm, const in_addr_t naddr)
 	if (ims == NULL) {
 		if (inm->inm_nsrc == in_mcast_maxgrpsrc)
 			return (-ENOSPC);
-		nims = malloc(sizeof(struct ip_msource), M_IPMSOURCE,
+#ifdef CONFIG_LAZYBSD
+		nims = malloc(sizeof(struct ip_msource), M_INMFILTER,
+#else
+		nims = malloc(sizeof(struct in_msource), M_INMFILTER,
+#endif
 		    M_NOWAIT | M_ZERO);
 		if (nims == NULL)
 			return (-ENOMEM);
@@ -791,7 +795,11 @@ imf_graft(struct in_mfilter *imf, const uint8_t st1,
 	struct ip_msource	*nims;
 	struct in_msource	*lims;
 
+#ifdef CONFIG_LAZYBSD
+	nims = malloc(sizeof(struct ip_msource), M_INMFILTER,
+#else
 	nims = malloc(sizeof(struct in_msource), M_INMFILTER,
+#endif
 	    M_NOWAIT | M_ZERO);
 	if (nims == NULL)
 		return (NULL);

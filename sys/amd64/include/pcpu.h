@@ -246,9 +246,11 @@ _Static_assert(sizeof(struct monitorbuf) == 128, "2x cache line");
 
 #define	IS_BSP()	(PCPU_GET(cpuid) == 0)
 
+#ifndef CONFIG_LAZYBSD
 #define zpcpu_offset_cpu(cpu)	((uintptr_t)&__pcpu[0] + UMA_PCPU_ALLOC_SIZE * cpu)
 #define zpcpu_base_to_offset(base) (void *)((uintptr_t)(base) - (uintptr_t)&__pcpu[0])
 #define zpcpu_offset_to_base(base) (void *)((uintptr_t)(base) + (uintptr_t)&__pcpu[0])
+#endif /* CONFIG_LAZYBSD */
 
 #define zpcpu_sub_protected(base, n) do {				\
 	ZPCPU_ASSERT_PROTECTED();					\

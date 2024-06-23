@@ -117,6 +117,7 @@ _timeout_task_init(struct taskqueue *queue, struct timeout_task *timeout_task,
 	timeout_task->f = 0;
 }
 
+#ifndef CONFIG_LAZYBSD
 static __inline int
 TQ_SLEEP(struct taskqueue *tq, void *p, const char *wm)
 {
@@ -124,6 +125,9 @@ TQ_SLEEP(struct taskqueue *tq, void *p, const char *wm)
 		return (msleep_spin(p, (struct mtx *)&tq->tq_mutex, wm, 0));
 	return (msleep(p, &tq->tq_mutex, 0, wm, 0));
 }
+#else
+#define TQ_SLEEP(a, b, c) break;
+#endif
 
 static struct taskqueue *
 _taskqueue_create(const char *name, int mflags,
@@ -359,6 +363,9 @@ taskqueue_task_nop_fn(void *context, int pending)
 static int
 taskqueue_drain_tq_queue(struct taskqueue *queue)
 {
+#ifdef CONFIG_LAZYBSD // for dangling-pointer
+	static
+#endif
 	struct task t_barrier;
 
 	if (STAILQ_EMPTY(&queue->tq_queue))
@@ -660,6 +667,7 @@ taskqueue_swi_giant_run(void *dummy)
 	taskqueue_run(taskqueue_swi_giant);
 }
 
+#ifndef CONFIG_LAZYBSD
 static int
 _taskqueue_start_threads(struct taskqueue **tqp, int count, int pri,
     cpuset_t *mask, struct proc *p, const char *name, va_list ap)
@@ -727,11 +735,13 @@ _taskqueue_start_threads(struct taskqueue **tqp, int count, int pri,
 
 	return (0);
 }
+#endif /* CONFIG_LAZYBSD */
 
 int
 taskqueue_start_threads(struct taskqueue **tqp, int count, int pri,
     const char *name, ...)
 {
+#ifndef CONFIG_LAZYBSD
 	va_list ap;
 	int error;
 
@@ -739,12 +749,16 @@ taskqueue_start_threads(struct taskqueue **tqp, int count, int pri,
 	error = _taskqueue_start_threads(tqp, count, pri, NULL, NULL, name, ap);
 	va_end(ap);
 	return (error);
+#else
+	return 0;
+#endif /* CONFIG_LAZYBSD */
 }
 
 int
 taskqueue_start_threads_in_proc(struct taskqueue **tqp, int count, int pri,
     struct proc *proc, const char *name, ...)
 {
+#ifndef CONFIG_LAZYBSD
 	va_list ap;
 	int error;
 
@@ -752,12 +766,16 @@ taskqueue_start_threads_in_proc(struct taskqueue **tqp, int count, int pri,
 	error = _taskqueue_start_threads(tqp, count, pri, NULL, proc, name, ap);
 	va_end(ap);
 	return (error);
+#else
+	return 0;
+#endif /* CONFIG_LAZYBSD */
 }
 
 int
 taskqueue_start_threads_cpuset(struct taskqueue **tqp, int count, int pri,
     cpuset_t *mask, const char *name, ...)
 {
+#ifndef CONFIG_LAZYBSD
 	va_list ap;
 	int error;
 
@@ -765,6 +783,9 @@ taskqueue_start_threads_cpuset(struct taskqueue **tqp, int count, int pri,
 	error = _taskqueue_start_threads(tqp, count, pri, mask, NULL, name, ap);
 	va_end(ap);
 	return (error);
+#else
+	return 0;
+#endif /* CONFIG_LAZYBSD */
 }
 
 static inline void

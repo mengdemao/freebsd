@@ -890,6 +890,8 @@ mb_unmapped_compress(struct mbuf *m)
 	return (0);
 }
 
+#ifndef CONFIG_LAZYBSD
+
 /*
  * These next few routines are used to permit downgrading an unmapped
  * mbuf to a chain of mapped mbufs.  This is used when an interface
@@ -1060,6 +1062,13 @@ fail:
 	m_freem(top);
 	return (NULL);
 }
+#else
+static struct mbuf *
+_mb_unmapped_to_ext(struct mbuf *m)
+{
+    return (m);
+}
+#endif
 
 struct mbuf *
 mb_unmapped_to_ext(struct mbuf *top)
@@ -1567,6 +1576,7 @@ mb_alloc_ext_plus_pages(int len, int how)
 	vm_page_t pg;
 	int i, npgs;
 
+#ifndef CONFIG_LAZYBSD
 	m = mb_alloc_ext_pgs(how, mb_free_mext_pgs);
 	if (m == NULL)
 		return (NULL);
@@ -1588,6 +1598,9 @@ mb_alloc_ext_plus_pages(int len, int how)
 		m->m_epg_pa[i] = VM_PAGE_TO_PHYS(pg);
 	}
 	m->m_epg_npgs = npgs;
+#else
+	m = mb_alloc_ext_pgs(how, mb_free_ext);
+#endif
 	return (m);
 }
 

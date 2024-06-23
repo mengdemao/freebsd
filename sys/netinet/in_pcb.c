@@ -112,6 +112,10 @@ __FBSDID("$FreeBSD$");
 
 #include <security/mac/mac_framework.h>
 
+#ifdef CONFIG_LAZYBSD
+#include "lazybsd_host.h"
+#endif
+
 #define	INPCBLBGROUP_SIZMIN	8
 #define	INPCBLBGROUP_SIZMAX	256
 
@@ -1421,6 +1425,13 @@ in_pcbconnect_setup(struct inpcb *inp, struct sockaddr *nam,
 			IN_IFADDR_RUNLOCK(&in_ifa_tracker);
 		}
 	}
+
+#ifdef CONFIG_LAZYBSD
+	if (laddr.s_addr == INADDR_ANY) {
+		lazybsd_in_pcbladdr(AF_INET, &faddr, fport, &laddr);
+	}
+#endif
+
 	if (laddr.s_addr == INADDR_ANY) {
 		error = in_pcbladdr(inp, &faddr, &laddr, cred);
 		/*
@@ -1466,6 +1477,7 @@ in_pcbconnect_setup(struct inpcb *inp, struct sockaddr *nam,
 			return (EADDRINUSE);
 		}
 	} else {
+#ifndef CONFIG_LAZYBSD
 		struct sockaddr_in lsin, fsin;
 
 		bzero(&lsin, sizeof(lsin));
@@ -1479,6 +1491,45 @@ in_pcbconnect_setup(struct inpcb *inp, struct sockaddr *nam,
 		    INPLOOKUP_WILDCARD);
 		if (error)
 			return (error);
+#else
+		struct ifaddr *ifa;
+		struct ifnet *ifp;
+		struct sockaddr_in ifp_sin;
+		unsigned loop_count = 0;
+		bzero(&ifp_sin, sizeof(ifp_sin));
+		ifp_sin.sin_addr.s_addr = laddr.s_addr;
+		ifp_sin.sin_family = AF_INET;
+		ifp_sin.sin_len = sizeof(ifp_sin);
+		ifa = ifa_ifwithnet((struct sockaddr *)&ifp_sin, 0, RT_ALL_FIBS);
+		if (ifa == NULL) {
+			ifp_sin.sin_addr.s_addr = faddr.s_addr;
+			ifa = ifa_ifwithnet((struct sockaddr *)&ifp_sin, 0, RT_ALL_FIBS);
+			if ( ifa == NULL )
+				return (EADDRNOTAVAIL);
+		}
+		ifp = ifa->ifa_ifp;
+		while (lport == 0) {
+			int rss;
+			error = in_pcbbind_setup(inp, NULL, &laddr.s_addr, &lport,
+			    cred);
+			if (error)
+				return (error);
+			rss = lazybsd_rss_check(ifp->if_softc, faddr.s_addr, laddr.s_addr,
+			    fport, lport);
+			if (rss) {
+				break;
+			}
+			lport = 0;
+			/* Note:
+			 * if all ports are completely used, just return.
+			 * this ugly code is not a correct way, it just lets loop quit.
+			 * we will fix it as soon as possible.
+			*/
+			if (++loop_count >= 65535) {
+				return (EADDRNOTAVAIL);
+			}
+		}
+#endif
 	}
 	*laddrp = laddr.s_addr;
 	*lportp = lport;
