@@ -331,7 +331,7 @@ epoch_adjust_prio(struct thread *td, u_char prio)
 	thread_unlock(td);
 }
 
-epoch_t
+weak_function epoch_t
 epoch_alloc(const char *name, int flags)
 {
 	epoch_t epoch;
@@ -435,7 +435,7 @@ epoch_currecord(epoch_t epoch)
 			return;					\
 	} while (0)
 
-void
+weak_function void
 _epoch_enter_preempt(epoch_t epoch, epoch_tracker_t et EPOCH_FILE_LINE)
 {
 	struct epoch_record *er;
@@ -486,7 +486,7 @@ epoch_enter(epoch_t epoch)
 	ck_epoch_begin(&er->er_record, NULL);
 }
 
-void
+weak_function void
 _epoch_exit_preempt(epoch_t epoch, epoch_tracker_t et EPOCH_FILE_LINE)
 {
 	struct epoch_record *er;
@@ -675,7 +675,7 @@ epoch_block_handler_preempt(struct ck_epoch *global __unused,
 	thread_lock(td);
 }
 
-void
+weak_function void
 epoch_wait_preempt(epoch_t epoch)
 {
 	struct thread *td;
@@ -750,7 +750,7 @@ epoch_wait(epoch_t epoch)
 	critical_exit();
 }
 
-void
+weak_function void
 epoch_call(epoch_t epoch, epoch_callback_t callback, epoch_context_t ctx)
 {
 	epoch_record_t er;
@@ -930,7 +930,7 @@ epoch_drain_cb(struct epoch_context *ctx)
 	}
 }
 
-void
+weak_function void
 epoch_drain_callbacks(epoch_t epoch)
 {
 	epoch_record_t er;
