@@ -223,6 +223,19 @@ extern struct pcpu *cpuid_to_pcpu[];
 
 #include <machine/pcpu_aux.h>
 
+#ifdef CONFIG_LAZYBSD
+extern __thread struct thread *lazybsd_curthread;
+static __inline struct thread *lazybsd_curthread_get(void)
+{
+    return lazybsd_curthread;
+}
+
+#ifndef curthread
+#define curthread lazybsd_curthread_get()
+#endif
+
+#endif /* CONFIG_LAZYBSD */
+
 #ifndef curthread
 #define	curthread	PCPU_GET(curthread)
 #endif
