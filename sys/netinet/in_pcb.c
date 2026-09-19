@@ -113,7 +113,7 @@ __FBSDID("$FreeBSD$");
 #include <security/mac/mac_framework.h>
 
 #ifdef CONFIG_LAZYBSD
-#include "lazybsd_host.h"
+#include <lazybsd/lazybsd.h>
 #endif
 
 #define	INPCBLBGROUP_SIZMIN	8
