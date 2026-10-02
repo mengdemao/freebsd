@@ -234,6 +234,24 @@ static __inline struct thread *lazybsd_curthread_get(void)
 #define curthread lazybsd_curthread_get()
 #endif
 
+extern void panic(const char* fmt, ...);
+extern __thread struct pcpu* pcpup;
+static __inline struct pcpu* lazybsd_pcpu_get(void)
+{
+	if (__builtin_expect(pcpup == NULL, 0)) {
+		panic("F-Stack: NULL per-CPU context (pcpup==NULL); curcpu/PCPU_* are unsupported in ff_pthread_create threads");
+	}
+
+	return pcpup;
+}
+
+#define	get_pcpu()               (lazybsd_pcpu_get()->pc_ ## prvspace)
+#define PCPU_GET(member)         (lazybsd_pcpu_get()->pc_ ## member)
+#define PCPU_ADD(member, val)    (lazybsd_pcpu_get()->pc_ ## member += (val))
+#define PCPU_INC(member)         PCPU_ADD(member, 1)
+#define PCPU_PTR(member)         (&lazybsd_pcpu_get()->pc_ ## member)
+#define PCPU_SET(member, val) 	 (lazybsd_pcpu_get()->pc_##member = (val))
+
 #endif /* CONFIG_LAZYBSD */
 
 #ifndef curthread

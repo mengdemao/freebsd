@@ -229,6 +229,7 @@ _Static_assert(sizeof(struct monitorbuf) == 128, "2x cache line");
 	}								\
 }
 
+#ifndef CONFIG_LAZYBSD
 #define	get_pcpu() __extension__ ({					\
 	struct pcpu *__pc;						\
 									\
@@ -243,6 +244,7 @@ _Static_assert(sizeof(struct monitorbuf) == 128, "2x cache line");
 #define	PCPU_INC(member)	__PCPU_INC(pc_ ## member)
 #define	PCPU_PTR(member)	__PCPU_PTR(pc_ ## member)
 #define	PCPU_SET(member, val)	__PCPU_SET(pc_ ## member, val)
+#endif /* !CONFIG_LAZYBSD */
 
 #define	IS_BSP()	(PCPU_GET(cpuid) == 0)
 
