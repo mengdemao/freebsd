@@ -224,19 +224,19 @@ extern struct pcpu *cpuid_to_pcpu[];
 #include <machine/pcpu_aux.h>
 
 #ifdef CONFIG_LAZYBSD
-extern __thread struct thread *lazybsd_curthread;
-static __inline struct thread *lazybsd_curthread_get(void)
+extern __thread struct thread *BSD_curthread;
+static __inline struct thread *BSD_curthread_get(void)
 {
-    return lazybsd_curthread;
+    return BSD_curthread;
 }
 
 #ifndef curthread
-#define curthread lazybsd_curthread_get()
+#define curthread BSD_curthread_get()
 #endif
 
 extern void panic(const char* fmt, ...);
 extern __thread struct pcpu* pcpup;
-static __inline struct pcpu* lazybsd_pcpu_get(void)
+static __inline struct pcpu* BSD_pcpu_get(void)
 {
 	if (__builtin_expect(pcpup == NULL, 0)) {
 		panic("F-Stack: NULL per-CPU context (pcpup==NULL); curcpu/PCPU_* are unsupported in ff_pthread_create threads");
@@ -245,12 +245,12 @@ static __inline struct pcpu* lazybsd_pcpu_get(void)
 	return pcpup;
 }
 
-#define	get_pcpu()               (lazybsd_pcpu_get()->pc_ ## prvspace)
-#define PCPU_GET(member)         (lazybsd_pcpu_get()->pc_ ## member)
-#define PCPU_ADD(member, val)    (lazybsd_pcpu_get()->pc_ ## member += (val))
+#define	get_pcpu()               (BSD_pcpu_get()->pc_ ## prvspace)
+#define PCPU_GET(member)         (BSD_pcpu_get()->pc_ ## member)
+#define PCPU_ADD(member, val)    (BSD_pcpu_get()->pc_ ## member += (val))
 #define PCPU_INC(member)         PCPU_ADD(member, 1)
-#define PCPU_PTR(member)         (&lazybsd_pcpu_get()->pc_ ## member)
-#define PCPU_SET(member, val) 	 (lazybsd_pcpu_get()->pc_##member = (val))
+#define PCPU_PTR(member)         (&BSD_pcpu_get()->pc_ ## member)
+#define PCPU_SET(member, val) 	 (BSD_pcpu_get()->pc_##member = (val))
 
 #endif /* CONFIG_LAZYBSD */
 
