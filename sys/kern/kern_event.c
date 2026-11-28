@@ -818,6 +818,9 @@ struct kq_timer_cb_data {
 static void
 kqtimer_sched_callout(struct kq_timer_cb_data *kc)
 {
+	/* The F-Stack callout_reset_sbt_on() macro now converts the absolute
+	 * fire time to relative ticks itself (lib/ff_callout_sbt.h), so the
+	 * former hand-rolled #ifdef __Userspace__ conversion is no longer needed. */
 	callout_reset_sbt_on(&kc->c, kc->next, 0, filt_timerexpire, kc->kn,
 	    kc->cpuid, C_ABSOLUTE);
 }
@@ -1994,6 +1997,7 @@ ast_kqueue(struct thread *td, int tda __unused)
 	taskqueue_quiesce(taskqueue_kqueue_ctx);
 }
 
+#ifndef __Userspace__
 static void
 kqueue_schedtask(struct kqueue *kq)
 {
@@ -2007,6 +2011,7 @@ kqueue_schedtask(struct kqueue *kq)
 		ast_sched(curthread, TDA_KQUEUE);
 	}
 }
+#endif
 
 /*
  * Expand the kq to make sure we have storage for fops/ident pair.
@@ -2547,7 +2552,11 @@ kqueue_wakeup(struct kqueue *kq)
 			kq->kq_state &= ~KQ_SEL;
 	}
 	if (!knlist_empty(&kq->kq_sel.si_note))
+#ifndef __Userspace__
 		kqueue_schedtask(kq);
+#else
+		KNOTE_UNLOCKED(&kq->kq_sel.si_note, 0);
+#endif
 	if ((kq->kq_state & KQ_ASYNC) == KQ_ASYNC) {
 		pgsigio(&kq->kq_sigio, SIGIO, 0);
 	}

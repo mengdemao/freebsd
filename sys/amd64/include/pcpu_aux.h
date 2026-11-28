@@ -58,7 +58,9 @@ __curthread(void)
 	    : "i" (offsetof(struct pcpu, pc_curthread)));
 	return (td);
 }
+#ifndef __Userspace__
 #define	curthread		(__curthread())
+#endif
 #define	curpcb			(&curthread->td_md.md_pcb)
 
 #endif	/* _MACHINE_PCPU_AUX_H_ */

@@ -309,9 +309,11 @@
 #define	VM_INITIAL_PAGEIN	16
 #endif
 
+#ifndef __Userspace__
 #if !defined(KASAN) && !defined(KMSAN)
 #define UMA_USE_DMAP
 #endif
+#endif /* !__Userspace__ */
 
 #ifndef LOCORE
 

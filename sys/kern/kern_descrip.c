@@ -5513,6 +5513,17 @@ filelistinit(void *dummy)
 SYSINIT(select, SI_SUB_LOCK, SI_ORDER_FIRST, filelistinit, NULL);
 
 /*-------------------------------------------------------------------*/
+/*
+ * __Userspace__ runtime-fix: badfo_* + badfileops are required by
+ * falloc()/_fdrop() to provide a placeholder fileops vector before finit()
+ * installs the real one (e.g. socketops in kern_accept4).  Without these
+ * the new fp keeps a NULL fo_close and any error-path _fdrop() jumps to
+ * NULL.
+ *
+ * Keep badfileops outside the __Userspace__ guard: the #ifndef
+ * __Userspace__ marker below starts past badfileops so the placeholder
+ * stays compiled in.
+ */
 
 static int
 badfo_readwrite(struct file *fp, struct uio *uio, struct ucred *active_cred,
@@ -5614,6 +5625,7 @@ const struct fileops badfileops = {
 	.fo_fill_kinfo = badfo_fill_kinfo,
 };
 
+#ifndef __Userspace__
 static int
 path_poll(struct file *fp, int events, struct ucred *active_cred,
     struct thread *td)
@@ -5764,3 +5776,41 @@ fildesc_drvinit(void *unused)
 }
 
 SYSINIT(fildescdev, SI_SUB_DRIVERS, SI_ORDER_MIDDLE, fildesc_drvinit, NULL);
+
+#else
+
+int
+ff_fdisused(int fd)
+{
+	struct thread *td = curthread;
+
+	if (fd < 0) {
+		return 0;
+	}
+
+	return (td && fd < td->td_proc->p_fd->fd_nfiles &&
+	    fdisused(td->td_proc->p_fd, fd) &&
+	    td->td_proc->p_fd->fd_ofiles[fd].fde_file != NULL);
+}
+
+/*
+ * block out a range of descriptors to avoid overlap with
+ * the kernel's descriptor space
+ */
+void
+ff_fdused_range(int max)
+{
+	int i, result;
+	struct thread *td = curthread;
+	for (i = 0; i < max; i++)
+		fdalloc(td, 0, &result);
+}
+
+int
+ff_getmaxfd(void)
+{
+	struct thread *td = curthread;
+	return 	getmaxfd(td);
+
+}
+#endif

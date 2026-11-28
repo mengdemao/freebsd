@@ -160,7 +160,12 @@ tunable_mbinit(void *dummy)
 	 * available kernel memory (physical or kmem).
 	 * At most it can be 3/4 of available kernel memory.
 	 */
+#ifndef __Userspace__
 	realmem = qmin((quad_t)physmem * PAGE_SIZE, vm_kmem_size);
+#else
+	realmem = (quad_t)physmem * PAGE_SIZE;
+#endif
+
 	maxmbufmem = realmem / 2;
 	TUNABLE_QUAD_FETCH("kern.ipc.maxmbufmem", &maxmbufmem);
 	if (maxmbufmem > realmem / 4 * 3)
@@ -896,6 +901,7 @@ mb_unmapped_compress(struct mbuf *m)
 	return (0);
 }
 
+#ifndef __Userspace__
 /*
  * These next few routines are used to permit downgrading an unmapped
  * mbuf to a chain of mapped mbufs.  This is used when an interface
@@ -1078,6 +1084,14 @@ fail:
 	*mres = NULL;
 	return (ENOMEM);
 }
+#else
+static int
+_mb_unmapped_to_ext(struct mbuf *m, struct mbuf **mres)
+{
+	*mres = m;
+	return (0);
+}
+#endif
 
 int
 mb_unmapped_to_ext(struct mbuf *top, struct mbuf **mres)
@@ -1637,6 +1651,7 @@ m_free_raw(struct mbuf *mb)
 	uma_zfree(zone_mbuf, mb);
 }
 
+#ifndef __Userspace__
 int
 m_snd_tag_alloc(struct ifnet *ifp, union if_snd_tag_alloc_params *params,
     struct m_snd_tag **mstp)
@@ -1667,7 +1682,9 @@ m_snd_tag_destroy(struct m_snd_tag *mst)
 	if_rele(ifp);
 	counter_u64_add(snd_tag_count, -1);
 }
+#endif
 
+#ifndef __Userspace__
 void
 m_rcvif_serialize(struct mbuf *m)
 {
@@ -1715,6 +1732,7 @@ m_rcvif_restore(struct mbuf *m)
 
 	return (ifp);
 }
+#endif
 
 /*
  * Allocate an mbuf with anonymous external pages.
@@ -1726,6 +1744,7 @@ mb_alloc_ext_plus_pages(int len, int how)
 	vm_page_t pg;
 	int i, npgs;
 
+#ifndef __Userspace__
 	m = mb_alloc_ext_pgs(how, mb_free_mext_pgs, 0);
 	if (m == NULL)
 		return (NULL);
@@ -1747,6 +1766,10 @@ mb_alloc_ext_plus_pages(int len, int how)
 		m->m_epg_pa[i] = VM_PAGE_TO_PHYS(pg);
 	}
 	m->m_epg_npgs = npgs;
+#else
+	m = mb_alloc_ext_pgs(how, mb_free_ext, 0);
+#endif
+
 	return (m);
 }
 

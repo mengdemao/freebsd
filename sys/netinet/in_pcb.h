@@ -611,7 +611,11 @@ void 	inp_4tuple_get(struct inpcb *inp, uint32_t *laddr, uint16_t *lp,
 #define	INP_RECVRSSBUCKETID	0x00000200 /* populate recv datagram with bucket id */
 #define	INP_RATE_LIMIT_CHANGED	0x00000400 /* rate limit needs attention */
 #define	INP_ORIGDSTADDR		0x00000800 /* receive IP dst address/port */
+#ifdef __Userspace__
+#define	INP_FF_FLOWMAP		0x00001000 /* F-Stack flow map */
+#else
 /*				0x00001000 */
+#endif
 /*				0x00002000 */
 /*				0x00004000 */
 /*				0x00008000 */
@@ -639,6 +643,9 @@ typedef	enum {
 	INPLOOKUP_RLOCKPCB = 0x00000002,	/* Return inpcb read-locked. */
 	INPLOOKUP_WLOCKPCB = 0x00000004,	/* Return inpcb write-locked. */
 	INPLOOKUP_FIB = 0x00000008,		/* inp must be from same FIB. */
+#ifdef __Userspace__
+	INPLOOKUP_LPORT_RSS_CHECK = 0x80000000,	/* F-Stack lport RSS check */
+#endif
 } inp_lookup_t;
 
 #define	INPLOOKUP_MASK	(INPLOOKUP_WILDCARD | INPLOOKUP_RLOCKPCB | \

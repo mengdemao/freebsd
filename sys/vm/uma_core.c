@@ -280,7 +280,9 @@ enum zfreeskip {
 void	uma_startup1(vm_offset_t);
 void	uma_startup2(void);
 
+#if !defined(__Userspace__)
 static void *noobj_alloc(uma_zone_t, vm_size_t, int, uint8_t *, int);
+#endif /* !defined(__Userspace__) */
 static void *page_alloc(uma_zone_t, vm_size_t, int, uint8_t *, int);
 static void *pcpu_page_alloc(uma_zone_t, vm_size_t, int, uint8_t *, int);
 static void *startup_alloc(uma_zone_t, vm_size_t, int, uint8_t *, int);
@@ -1008,7 +1010,7 @@ cache_bucket_load_free(uma_cache_t cache, uma_bucket_t b)
 }
 
 #ifdef NUMA
-static inline void 
+static inline void
 cache_bucket_load_cross(uma_cache_t cache, uma_bucket_t b)
 {
 
@@ -1870,6 +1872,7 @@ fail:
 	return (NULL);
 }
 
+#if !defined(__Userspace__)
 /*
  * This function is intended to be used early on in place of page_alloc().  It
  * performs contiguous physical memory allocations and uses a bump allocator for
@@ -1929,6 +1932,7 @@ startup_free(void *mem, vm_size_t bytes)
 		vm_page_free(m);
 	}
 }
+#endif /* !defined(__Userspace__) */
 
 /*
  * Allocates a number of pages from the system
@@ -1953,6 +1957,7 @@ page_alloc(uma_zone_t zone, vm_size_t bytes, int domain, uint8_t *pflag,
 	return (p);
 }
 
+#if !defined(__Userspace__)
 static void *
 pcpu_page_alloc(uma_zone_t zone, vm_size_t bytes, int domain, uint8_t *pflag,
     int wait)
@@ -2049,7 +2054,7 @@ noobj_alloc(uma_zone_t zone, vm_size_t bytes, int domain, uint8_t *flags,
 		 */
 		TAILQ_FOREACH_SAFE(p, &alloctail, plinks.q, p_next) {
 			vm_page_unwire_noq(p);
-			vm_page_free(p); 
+			vm_page_free(p);
 		}
 		return (NULL);
 	}
@@ -2077,6 +2082,38 @@ contig_alloc(uma_zone_t zone, vm_size_t bytes, int domain, uint8_t *pflag,
 	return ((void *)kmem_alloc_contig_domainset(DOMAINSET_FIXED(domain),
 	    bytes, wait, 0, ~(vm_paddr_t)0, 1, 0, VM_MEMATTR_DEFAULT));
 }
+#else
+static void *
+pcpu_page_alloc(uma_zone_t zone, vm_size_t bytes, int domain, uint8_t *pflag,
+    int wait)
+{
+	*pflag = UMA_SLAB_KERNEL;
+	return page_alloc(zone, bytes, domain, pflag, wait);
+}
+
+static void *
+contig_alloc(uma_zone_t zone, vm_size_t bytes, int domain, uint8_t *pflag,
+    int wait)
+{
+
+	*pflag = UMA_SLAB_KERNEL;
+	return page_alloc(zone, bytes, domain, pflag, wait);
+}
+
+static void *
+startup_alloc(uma_zone_t zone, vm_size_t bytes, int domain, uint8_t *pflag,
+    int wait)
+{
+	*pflag = UMA_SLAB_BOOT;
+	return page_alloc(zone, bytes, domain, pflag, wait);
+}
+
+static void
+startup_free(void *mem, vm_size_t bytes)
+{
+	kmem_free(mem, bytes);
+}
+#endif /* !defined(__Userspace__) */
 
 #if defined(UMA_USE_DMAP) && !defined(UMA_MD_SMALL_ALLOC)
 void *
@@ -2126,6 +2163,7 @@ page_free(void *mem, vm_size_t size, uint8_t flags)
 	kmem_free(mem, size);
 }
 
+#if !defined(__Userspace__)
 /*
  * Frees pcpu zone allocations
  *
@@ -2161,6 +2199,13 @@ pcpu_page_free(void *mem, vm_size_t size, uint8_t flags)
 	pmap_qremove(sva, size >> PAGE_SHIFT);
 	kva_free(sva, size);
 }
+#else
+static void
+pcpu_page_free(void *mem, vm_size_t size, uint8_t flags)
+{
+	page_free(mem, size, flags);
+}
+#endif /* !defined(__Userspace__) */
 
 #if defined(UMA_USE_DMAP) && !defined(UMA_MD_SMALL_ALLOC)
 void
@@ -2931,7 +2976,7 @@ zone_ctor(void *mem, int size, void *udata, int flags)
 	 */
 	zone->uz_import = zone_import;
 	zone->uz_release = zone_release;
-	zone->uz_arg = zone; 
+	zone->uz_arg = zone;
 	keg = arg->keg;
 
 	if (arg->flags & UMA_ZONE_SECONDARY) {
@@ -3203,9 +3248,11 @@ uma_startup1(vm_offset_t virtual_avail)
 	smr_init();
 }
 
+#if !defined(__Userspace__)
 #ifndef UMA_USE_DMAP
 extern void vm_radix_reserve_kva(void);
 #endif
+#endif /* !defined(__Userspace__) */
 
 /*
  * Advertise the availability of normal kva allocations and switch to
@@ -3216,6 +3263,7 @@ void
 uma_startup2(void)
 {
 
+#if !defined(__Userspace__)
 	if (bootstart != bootmem) {
 		vm_map_lock(kernel_map);
 		(void)vm_map_insert(kernel_map, NULL, 0, bootstart, bootmem,
@@ -3227,6 +3275,7 @@ uma_startup2(void)
 	/* Set up radix zone to use noobj_alloc. */
 	vm_radix_reserve_kva();
 #endif
+#endif /* !defined(__Userspace__) */
 
 	booted = BOOT_KVA;
 	zone_foreach_unlocked(zone_kva_available, NULL);
@@ -5242,6 +5291,7 @@ uma_zone_reserve(uma_zone_t zone, int items)
 	keg->uk_reserve = items;
 }
 
+#if !defined(__Userspace__)
 /* See uma.h */
 int
 uma_zone_reserve_kva(uma_zone_t zone, int count)
@@ -5282,6 +5332,7 @@ uma_zone_reserve_kva(uma_zone_t zone, int count)
 
 	return (1);
 }
+#endif /* !defined(__Userspace__) */
 
 /* See uma.h */
 void
@@ -5872,7 +5923,7 @@ uma_dbg_alloc(uma_zone_t zone, uma_slab_t slab, void *item)
 
 	if (slab == NULL) {
 		slab = uma_dbg_getslab(zone, item);
-		if (slab == NULL) 
+		if (slab == NULL)
 			panic("uma: item %p did not belong to zone %s",
 			    item, zone->uz_name);
 	}
@@ -5898,7 +5949,7 @@ uma_dbg_free(uma_zone_t zone, uma_slab_t slab, void *item)
 
 	if (slab == NULL) {
 		slab = uma_dbg_getslab(zone, item);
-		if (slab == NULL) 
+		if (slab == NULL)
 			panic("uma: Freed item %p did not belong to zone %s",
 			    item, zone->uz_name);
 	}

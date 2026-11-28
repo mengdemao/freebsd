@@ -256,6 +256,7 @@ ip6_randomid(void)
 u_int32_t
 ip6_randomflowlabel(void)
 {
+#ifndef __Userspace__
 
 	/*
 	 * It's ok to emit zero flow labels early, before random is available
@@ -266,6 +267,7 @@ ip6_randomflowlabel(void)
 	 */
 	if (__predict_false(!is_random_seeded()))
 		return (0);
+#endif
 
 	return randomid(&randomtab_20) & 0xfffff;
 }

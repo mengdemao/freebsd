@@ -29,7 +29,9 @@
 
 #include <sys/types.h>
 #include <sys/libkern.h>
-
+#ifdef __Userspace__
+__attribute__((used))
+#endif
 void *
 (memset)(void *b, int c, size_t len)
 {

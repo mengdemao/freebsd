@@ -413,6 +413,9 @@ taskqueue_task_nop_fn(void *context, int pending)
 static int
 taskqueue_drain_tq_queue(struct taskqueue *queue)
 {
+#ifdef __Userspace__ // for dangling-pointer
+	static
+#endif
 	struct task t_barrier;
 
 	if (STAILQ_EMPTY(&queue->tq_queue))
@@ -714,6 +717,7 @@ taskqueue_swi_giant_run(void *dummy)
 	taskqueue_run(taskqueue_swi_giant);
 }
 
+#ifndef __Userspace__
 static int
 _taskqueue_start_threads(struct taskqueue **tqp, int count, int pri,
     cpuset_t *mask, struct proc *p, const char *name, va_list ap)
@@ -781,11 +785,13 @@ _taskqueue_start_threads(struct taskqueue **tqp, int count, int pri,
 
 	return (0);
 }
+#endif
 
 int
 taskqueue_start_threads(struct taskqueue **tqp, int count, int pri,
     const char *name, ...)
 {
+#ifndef __Userspace__
 	va_list ap;
 	int error;
 
@@ -793,12 +799,16 @@ taskqueue_start_threads(struct taskqueue **tqp, int count, int pri,
 	error = _taskqueue_start_threads(tqp, count, pri, NULL, NULL, name, ap);
 	va_end(ap);
 	return (error);
+#else
+	return (0);
+#endif
 }
 
 int
 taskqueue_start_threads_in_proc(struct taskqueue **tqp, int count, int pri,
     struct proc *proc, const char *name, ...)
 {
+#ifndef __Userspace__
 	va_list ap;
 	int error;
 
@@ -806,12 +816,16 @@ taskqueue_start_threads_in_proc(struct taskqueue **tqp, int count, int pri,
 	error = _taskqueue_start_threads(tqp, count, pri, NULL, proc, name, ap);
 	va_end(ap);
 	return (error);
+#else
+	return (0);
+#endif
 }
 
 int
 taskqueue_start_threads_cpuset(struct taskqueue **tqp, int count, int pri,
     cpuset_t *mask, const char *name, ...)
 {
+#ifndef __Userspace__
 	va_list ap;
 	int error;
 
@@ -819,6 +833,9 @@ taskqueue_start_threads_cpuset(struct taskqueue **tqp, int count, int pri,
 	error = _taskqueue_start_threads(tqp, count, pri, mask, NULL, name, ap);
 	va_end(ap);
 	return (error);
+#else
+	return (0);
+#endif
 }
 
 static inline void

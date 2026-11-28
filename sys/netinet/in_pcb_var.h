@@ -58,6 +58,12 @@ struct inpcb *in_pcblookup_local(struct inpcbinfo *, struct in_addr, u_short,
 int     in_pcbinshash(struct inpcb *);
 void    in_pcbrehash(struct inpcb *);
 void    in_pcbremhash_locked(struct inpcb *);
+#ifdef __Userspace__
+int	in_pcb_flow_admit(struct inpcb *, int, const void *, const void *,
+	    u_short, u_short);
+void	in_pcb_flow_peer_note(int, const void *, const void *, u_short,
+	    u_short);
+#endif
 
 /*
  * Load balance groups used for the SO_REUSEPORT_LB socket option. Each group

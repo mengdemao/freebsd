@@ -732,6 +732,9 @@ in_pcbbind(struct inpcb *inp, struct sockaddr_in *sin, int flags,
 	    &inp->inp_lport, flags, cred);
 	if (error)
 		return (error);
+#ifdef __Userspace__
+	if (inp->inp_lport != 0) {
+#endif
 	if (__predict_false((error = in_pcbinshash(inp)) != 0)) {
 		MPASS(inp->inp_socket->so_options & SO_REUSEPORT_LB);
 		inp->inp_laddr.s_addr = INADDR_ANY;
@@ -739,6 +742,9 @@ in_pcbbind(struct inpcb *inp, struct sockaddr_in *sin, int flags,
 		inp->inp_flags &= ~INP_BOUNDFIB;
 		return (error);
 	}
+#ifdef __Userspace__
+	}
+#endif
 	if (anonport)
 		inp->inp_flags |= INP_ANONPORT;
 	return (0);
@@ -1061,11 +1067,13 @@ in_pcbbind_setup(struct inpcb *inp, struct sockaddr_in *sin, in_addr_t *laddrp,
 	}
 	if (*lportp != 0)
 		lport = *lportp;
+#ifndef __Userspace__
 	if (lport == 0) {
 		error = in_pcb_lport(inp, &laddr, &lport, cred, lookupflags);
 		if (error != 0)
 			return (error);
 	}
+#endif
 	*laddrp = laddr.s_addr;
 	*lportp = lport;
 	if ((flags & INPBIND_FIB) != 0)

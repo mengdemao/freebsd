@@ -178,20 +178,25 @@ int linux_alloc_current_noop(struct thread *, int);
 #define critical_enter() critical_enter_KBI()
 #define critical_exit() critical_exit_KBI()
 #else
+#if !defined(__Userspace__)
 #include "offset.inc"
+#endif
 static __inline void
 critical_enter(void)
 {
+#if !defined(__Userspace__)
 	struct thread_lite *td;
 
 	td = (struct thread_lite *)curthread;
 	td->td_critnest++;
 	atomic_interrupt_fence();
+#endif /* !defined(__Userspace__) */
 }
 
 static __inline void
 critical_exit(void)
 {
+#if !defined(__Userspace__)
 	struct thread_lite *td;
 
 	td = (struct thread_lite *)curthread;
@@ -202,7 +207,7 @@ critical_exit(void)
 	atomic_interrupt_fence();
 	if (__predict_false(td->td_owepreempt))
 		critical_exit_preempt();
-
+#endif /* !defined(__Userspace__) */
 }
 #endif
 
@@ -225,7 +230,7 @@ int	kvprintf(char const *, void (*)(int, void*), void *, int,
 void	log(int, const char *, ...) __printflike(2, 3);
 void	log_console(struct uio *);
 void	vlog(int, const char *, __va_list) __printflike(2, 0);
-int	asprintf(char **ret, struct malloc_type *mtp, const char *format, 
+int	asprintf(char **ret, struct malloc_type *mtp, const char *format,
 	    ...) __printflike(3, 4);
 int	printf(const char *, ...) __printflike(1, 2);
 int	snprintf(char *, size_t, const char *, ...) __printflike(3, 4);

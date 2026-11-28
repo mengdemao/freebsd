@@ -658,9 +658,14 @@ sbreserve_locked_limit(struct socket *so, sb_which which, u_long cc,
 	 */
 	if (cc > BUF_MAX_ADJ(buf_max))
 		return (false);
+	/*
+	 * No need for rlimits in fstack.
+	 */
+#ifndef __Userspace__
 	if (td != NULL) {
 		sbsize_limit = lim_cur(td, RLIMIT_SBSIZE);
 	} else
+#endif
 		sbsize_limit = RLIM_INFINITY;
 	if (!chgsbsize(so->so_cred->cr_uidinfo, &sb->sb_hiwat, cc,
 	    sbsize_limit))

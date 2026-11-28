@@ -139,6 +139,11 @@ VNET_DECLARE(uint32_t, newreno_beta_ecn);
 #define V_newreno_beta VNET(newreno_beta)
 #define V_newreno_beta_ecn VNET(newreno_beta_ecn)
 
+#ifdef __Userspace__
+#define MODNAME tcp_rack
+#define STACKNAME rack
+#endif
+
 #define	M_TCPFSB	__CONCAT(M_TCPFSB, STACKNAME)
 #define	M_TCPDO		__CONCAT(M_TCPDO, STACKNAME)
 

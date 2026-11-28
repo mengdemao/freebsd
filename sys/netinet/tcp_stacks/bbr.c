@@ -139,6 +139,11 @@ struct sysctl_oid *bbr_sysctl_root;
 
 /*#define BBR_INVARIANT 1*/
 
+#ifdef __Userspace__
+#define MODNAME tcp_bbr
+#define STACKNAME bbr
+#endif
+
 /*
  * initial window
  */

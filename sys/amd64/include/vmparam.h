@@ -76,9 +76,11 @@
  * direct mapped segment.  This uses 2MB pages for reduced
  * TLB pressure.
  */
+#ifndef __Userspace__
 #if !defined(KASAN) && !defined(KMSAN)
 #define UMA_USE_DMAP
 #endif
+#endif /* !__Userspace__ */
 
 /*
  * The physical address space is densely populated.

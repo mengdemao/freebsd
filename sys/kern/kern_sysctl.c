@@ -2441,6 +2441,7 @@ struct __sysctl_args {
 	size_t	newlen;
 };
 #endif
+#ifndef __Userspace__
 int
 sys___sysctl(struct thread *td, struct __sysctl_args *uap)
 {
@@ -2466,6 +2467,7 @@ sys___sysctl(struct thread *td, struct __sysctl_args *uap)
 	}
 	return (error);
 }
+#endif
 
 int
 kern___sysctlbyname(struct thread *td, const char *oname, size_t namelen,

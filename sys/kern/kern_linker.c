@@ -2023,7 +2023,11 @@ linker_hints_lookup(const char *path, int pathlen, const char *modname,
 		goto bad;
 	best = cp = NULL;
 	error = VOP_GETATTR(nd.ni_vp, &vattr, cred);
+#ifdef __Userspace__
+	if (error || vattr.va_size == 0)
+#else
 	if (error)
+#endif
 		goto bad;
 	/*
 	 * XXX: we need to limit this number to some reasonable value

@@ -310,6 +310,21 @@ int	kern_readlinkat(struct thread *td, int fd, const char *path,
 int	kern_readv(struct thread *td, int fd, struct uio *auio);
 int	kern_recvit(struct thread *td, int s, struct msghdr *mp,
 	    enum uio_seg fromseg, struct mbuf **controlp);
+#ifdef __Userspace_ZC_RECV
+/* __Userspace_ZC_RECV: zero-copy receive variant — hands the socket-buffer mbuf
+ * chain back to the caller via *mp0 (soreceive's mp0 out-parameter), avoiding
+ * the soreceive->uiomove copy. Caller owns *mp0 and must m_freem() it. */
+int	kern_zc_recvit(struct thread *td, int s, struct uio *uio,
+	    struct mbuf **mp0);
+#endif
+#ifdef __Userspace_ZC_SEND
+/* __Userspace_ZC_SEND: zero-copy send variant — hands a pre-built mbuf chain
+ * (top) directly to sosend(uio=NULL, top=chain), avoiding the m_uiotombuf
+ * copy. Caller relinquishes top ownership on success; on error
+ * kern_zc_sendit frees top via m_freem (see 35-mbuf-lifecycle-spec). */
+int	kern_zc_sendit(struct thread *td, int s, struct mbuf *top,
+	    int flags);
+#endif
 int	kern_renameat(struct thread *td, int oldfd, const char *old, int newfd,
 	    const char *new, enum uio_seg pathseg, u_int flags);
 int	kern_frmdirat(struct thread *td, int dfd, const char *path, int fd,

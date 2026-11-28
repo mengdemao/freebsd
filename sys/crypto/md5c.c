@@ -31,7 +31,11 @@ static void	md5block(MD5_CTX *, const void *, size_t);
 #ifdef STANDALONE_SMALL
 #define UNROLL
 #else
+#if defined(__GNUC__)
+#define UNROLL _Pragma("GCC unroll 65534")
+#elif defined(__clang__)
 #define UNROLL _Pragma("unroll")
+#endif
 #endif
 
 void

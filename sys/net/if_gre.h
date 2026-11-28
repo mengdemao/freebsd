@@ -51,13 +51,21 @@ struct grehdr {
 struct greip {
 	struct ip	gi_ip;
 	struct grehdr	gi_gre;
+#ifndef __Userspace__
 } __packed;
+#else
+} __packed __aligned(2);
+#endif
 
 struct greudp {
 	struct ip	gi_ip;
 	struct udphdr	gi_udp;
 	struct grehdr	gi_gre;
+#ifndef __Userspace__
 } __packed;
+#else
+} __packed __aligned(2);
+#endif
 #endif /* INET */
 
 #ifdef INET6

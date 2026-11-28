@@ -71,7 +71,10 @@
 #include <security/audit/audit.h>
 #include <security/mac/mac_framework.h>
 
-static int sendit(struct thread *td, int s, struct msghdr *mp, int flags);
+#ifndef __Userspace__
+static
+#endif
+int sendit(struct thread *td, int s, struct msghdr *mp, int flags);
 static int recvit(struct thread *td, int s, struct msghdr *mp, void *namelenp);
 
 static int accept1(struct thread *td, int s, struct sockaddr *uname,
@@ -657,7 +660,10 @@ sys_socketpair(struct thread *td, struct socketpair_args *uap)
 	return (error);
 }
 
-static int
+#ifndef __Userspace__
+static
+#endif
+int
 sendit(struct thread *td, int s, struct msghdr *mp, int flags)
 {
 	struct mbuf *control;
@@ -1039,6 +1045,138 @@ out:
 
 	return (error);
 }
+
+#ifdef __Userspace_ZC_RECV
+/*
+ * __Userspace_ZC_RECV: zero-copy receive.
+ *
+ * A compact sibling of kern_recvit that passes a non-NULL mbuf out-parameter
+ * (mp0) into soreceive(). Per the FreeBSD soreceive(9) contract, when mp0 is
+ * non-NULL the socket-buffer mbuf chain is handed back to the caller without
+ * a uiomove copy (only uio_resid is consulted). The caller (ff_zc_recv) owns
+ * the returned chain and must release it via m_freem()/ff_zc_recv_free().
+ *
+ * No address/control-message handling here: ZC receive targets the bulk data
+ * fast path. Boundaries that cannot be zero-copied (split mbuf, MSG_PEEK,
+ * OOB, TLS, UDP) are handled inside soreceive by falling back to a copy
+ * (m_copym) or by the dgram path; the returned chain stays correct either way.
+ */
+int
+kern_zc_recvit(struct thread *td, int s, struct uio *uio, struct mbuf **mp0)
+{
+	struct file *fp;
+	struct socket *so;
+	struct mbuf *zc_chain = NULL;
+	ssize_t len;
+	int error, flags = 0;
+
+	if (mp0 == NULL)
+		return (EINVAL);
+	*mp0 = NULL;
+
+	AUDIT_ARG_FD(s);
+	error = getsock(td, s, &cap_recv_rights, &fp);
+	if (error != 0)
+		return (error);
+	so = fp->f_data;
+
+#ifdef MAC
+	error = mac_socket_check_receive(td->td_ucred, so);
+	if (error != 0) {
+		fdrop(fp, td);
+		return (error);
+	}
+#endif
+
+	len = uio->uio_resid;
+	error = soreceive(so, NULL, uio, &zc_chain, NULL, &flags);
+	if (error != 0) {
+		if (uio->uio_resid != len && (error == ERESTART ||
+		    error == EINTR || error == EWOULDBLOCK))
+			error = 0;
+	}
+	if (error == 0) {
+		td->td_retval[0] = len - uio->uio_resid;
+		*mp0 = zc_chain;
+	} else if (zc_chain != NULL) {
+		/* error after some mbufs were detached: free them */
+		m_freem(zc_chain);
+	}
+
+	fdrop(fp, td);
+	return (error);
+}
+#endif /* __Userspace_ZC_RECV */
+
+#ifdef __Userspace_ZC_SEND
+/*
+ * __Userspace_ZC_SEND: zero-copy send.
+ *
+ * A compact sibling of kern_sendit that calls sosend() directly with a
+ * non-NULL `top` mbuf chain and uio == NULL. Per the FreeBSD sosend(9)
+ * contract, when uio is NULL sosend takes resid from top->m_pkthdr.len
+ * and skips the m_uiotombuf copy. No address (sendto) / control (SCM)
+ * handling here: ZC send targets the bulk data fast path. Caller MUST
+ * pass a M_PKTHDR-headed chain with pkthdr.len == sum-of-segments
+ * (see lib/ff_veth.c ff_zc_mbuf_get/write).
+ *
+ * Ownership: on success sosend adopts `top`. On error before sosend
+ * (validation/getsock/MAC) kern_zc_sendit frees `top`; once sosend is
+ * entered the protosw layer frees top on its own error paths, so we do
+ * not double-free (see 35-mbuf-lifecycle-spec INV-3).
+ */
+int
+kern_zc_sendit(struct thread *td, int s, struct mbuf *top, int flags)
+{
+	struct file *fp;
+	struct socket *so;
+	ssize_t len;
+	int error;
+
+	if (top == NULL || (top->m_flags & M_PKTHDR) == 0) {
+		if (top != NULL)
+			m_freem(top);
+		return (EINVAL);
+	}
+	len = top->m_pkthdr.len;
+	if (len < 0) {
+		m_freem(top);
+		return (EINVAL);
+	}
+
+	AUDIT_ARG_FD(s);
+	error = getsock(td, s, &cap_send_rights, &fp);
+	if (error != 0) {
+		m_freem(top);
+		return (error);
+	}
+	so = fp->f_data;
+
+#ifdef MAC
+	error = mac_socket_check_send(td->td_ucred, so);
+	if (error != 0) {
+		m_freem(top);
+		fdrop(fp, td);
+		return (error);
+	}
+#endif
+
+	error = sosend(so, NULL, NULL, top, NULL, flags, td);
+	/* top adopted by sosend on success; freed by protosw on error. */
+
+	if (error == 0) {
+		td->td_retval[0] = len;
+	} else if (error == EPIPE && (so->so_options & SO_NOSIGPIPE) == 0 &&
+	    (flags & MSG_NOSIGNAL) == 0) {
+		PROC_LOCK(td->td_proc);
+		tdsignal(td, SIGPIPE);
+		PROC_UNLOCK(td->td_proc);
+	}
+
+	fdrop(fp, td);
+	return (error);
+}
+#endif /* __Userspace_ZC_SEND */
 
 static int
 recvit(struct thread *td, int s, struct msghdr *mp, void *namelenp)

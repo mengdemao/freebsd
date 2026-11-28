@@ -92,8 +92,10 @@ static fo_stat_t soo_stat;
 static fo_close_t soo_close;
 static fo_fdclose_t soo_fdclose;
 static fo_chmod_t soo_chmod;
+#ifndef __Userspace__
 static fo_fill_kinfo_t soo_fill_kinfo;
 static fo_aio_queue_t soo_aio_queue;
+#endif
 
 static void	soo_aio_cancel(struct kaiocb *job);
 
@@ -110,8 +112,10 @@ const struct fileops socketops = {
 	.fo_chmod = soo_chmod,
 	.fo_chown = invfo_chown,
 	.fo_sendfile = invfo_sendfile,
+#ifndef __Userspace__
 	.fo_fill_kinfo = soo_fill_kinfo,
 	.fo_aio_queue = soo_aio_queue,
+#endif
 	.fo_cmp = file_kcmp_generic,
 	.fo_flags = DFLAG_PASSABLE
 };
@@ -388,6 +392,7 @@ soo_chmod(struct file *fp, mode_t mode, struct ucred *cred, struct thread *td)
 	return (error);
 }
 
+#ifndef __Userspace__
 static int
 soo_fill_kinfo(struct file *fp, struct kinfo_file *kif, struct filedesc *fdp)
 {
@@ -450,8 +455,9 @@ soo_fill_kinfo(struct file *fp, struct kinfo_file *kif, struct filedesc *fdp)
 	strncpy(kif->kf_path, so->so_proto->pr_domain->dom_name,
 	    sizeof(kif->kf_path));
 	CURVNET_RESTORE();
-	return (0);	
+	return (0);
 }
+#endif
 
 /*
  * Use the 'backend3' field in AIO jobs to store the amount of data
@@ -819,6 +825,7 @@ soo_aio_cancel(struct kaiocb *job)
 		aio_cancel(job);
 }
 
+#ifndef __Userspace__
 static int
 soo_aio_queue(struct file *fp, struct kaiocb *job)
 {
@@ -826,6 +833,7 @@ soo_aio_queue(struct file *fp, struct kaiocb *job)
 
 	return (so->so_proto->pr_aio_queue(so, job));
 }
+#endif
 
 int
 soaio_queue_generic(struct socket *so, struct kaiocb *job)

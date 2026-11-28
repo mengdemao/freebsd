@@ -56,6 +56,9 @@ typedef	long	word;		/* "word" used for optimal copy speed */
  * This is the routine that actually implements
  * (the portable versions of) bcopy, memcpy, and memmove.
  */
+#ifdef __Userspace__
+__attribute__((used))
+#endif
 void *
 memcpy(void *dst0, const void *src0, size_t length)
 {

@@ -348,12 +348,14 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr_in6 *sin6, int flags,
 	if ((flags & INPBIND_FIB) != 0)
 		inp->inp_flags |= INP_BOUNDFIB;
 	if (lport == 0) {
+#ifndef __Userspace__
 		if ((error = in6_pcbsetport(&inp->in6p_laddr, inp, cred)) != 0) {
 			/* Undo an address bind that may have occurred. */
 			inp->inp_flags &= ~INP_BOUNDFIB;
 			inp->in6p_laddr = in6addr_any;
 			return (error);
 		}
+#endif
 	} else {
 		inp->inp_lport = lport;
 		if (in_pcbinshash(inp) != 0) {

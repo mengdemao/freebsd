@@ -183,6 +183,34 @@ ATOMIC_CMPSET(short);
 ATOMIC_CMPSET(int);
 ATOMIC_CMPSET(long);
 
+#ifdef __Userspace__
+/*
+ * The atomic_fcmpset_int above run error sometimes,
+ * it's return value is 0 while CAS success, and then loop long time.
+ * And no reason found yet.
+ *
+ * But use the function can fix it.
+ * This function copied from DPDK's rte_atomic.h
+ */
+static __inline int
+atomic_fcmpset_int32(volatile u_int *dst, u_int *expect, u_int src)
+{
+	u_char res;
+
+	__asm __volatile(
+	"	" "lock ; " "		"
+	"cmpxchgl %[src], %[dst];"
+	"sete %[res];"
+	: [res] "=a" (res),     /* output */
+	  [dst] "=m" (*dst)
+	: [src] "r" (src),      /* input */
+	  "a" (*expect),
+	  "m" (*dst)
+	: "memory");            /* no-clobber list */
+	return (res);
+}
+#endif /* __Userspace__ */
+
 /*
  * Atomically add the value of v to the integer pointed to by p and return
  * the previous value of *p.
@@ -294,12 +322,18 @@ atomic_testandclear_long(volatile u_long *p, u_int v)
 static __inline void
 __storeload_barrier(void)
 {
-#if defined(_KERNEL)
+#if defined(_KERNEL) && !defined(__Userspace__)
 	__asm __volatile("lock; addl $0,%%gs:%c0"
 	    : : "i" (OFFSETOF_MONITORBUF) : "memory", "cc");
-#else /* !_KERNEL */
+#else /* !_KERNEL || __Userspace__ */
+	/*
+	 * Userspace port (F-Stack DP-RT-2026-06-01): the %gs PCPU segment
+	 * is not set up by the userland process, so accessing
+	 * %gs:OFFSETOF_MONITORBUF would SIGSEGV (observed in smr_create()).
+	 * Fall back to the userland-safe rsp variant.
+	 */
 	__asm __volatile("lock; addl $0,-8(%%rsp)" : : : "memory", "cc");
-#endif /* _KERNEL*/
+#endif /* _KERNEL && !__Userspace__ */
 }
 
 #define	ATOMIC_LOAD(TYPE)					\

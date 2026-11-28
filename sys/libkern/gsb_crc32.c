@@ -758,7 +758,7 @@ table_crc32c(uint32_t crc32c, const unsigned char *buffer, unsigned int length)
 	}
 }
 
-#if defined(_KERNEL) && defined(__aarch64__)
+#if defined(_KERNEL) && defined(__aarch64__) && !defined(__Userspace__)
 DEFINE_IFUNC(, uint32_t, calculate_crc32c,
     (uint32_t crc32c, const unsigned char *buffer, unsigned int length))
 {
@@ -770,7 +770,7 @@ DEFINE_IFUNC(, uint32_t, calculate_crc32c,
 
 	return (table_crc32c);
 }
-#elif defined(_KERNEL) && (defined(__amd64__) || defined(__i386__))
+#elif defined(_KERNEL) && (defined(__amd64__) || defined(__i386__)) && !defined(__Userspace__)
 DEFINE_IFUNC(, uint32_t, calculate_crc32c,
     (uint32_t crc32c, const unsigned char *buffer, unsigned int length))
 {
@@ -787,7 +787,7 @@ calculate_crc32c(uint32_t crc32c,
 {
 	return (table_crc32c(crc32c, buffer, length));
 }
-#endif /* _KERNEL && __aarch64__ */
+#endif /* _KERNEL && __aarch64__ && !__Userspace__ */
 
 #else
 uint32_t

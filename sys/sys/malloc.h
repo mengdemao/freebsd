@@ -192,6 +192,8 @@ void	free(void *addr, struct malloc_type *type);
 void	zfree(void *addr, struct malloc_type *type);
 void	*malloc(size_t size, struct malloc_type *type, int flags) __malloc_like
 	    __result_use_check __alloc_size(1);
+
+#ifndef __Userspace__
 /*
  * Try to optimize malloc(..., ..., M_ZERO) allocations by doing zeroing in
  * place if the size is known at compilation time.
@@ -241,6 +243,7 @@ void	*malloc(size_t size, struct malloc_type *type, int flags) __malloc_like
 	}								\
 	_malloc_item;							\
 })
+#endif
 
 void	*malloc_domainset(size_t size, struct malloc_type *type,
 	    struct domainset *ds, int flags) __malloc_like __result_use_check

@@ -274,10 +274,14 @@ static struct tcp_hptsi {
 } tcp_pace;
 
 static MALLOC_DEFINE(M_TCPHPTS, "tcp_hpts", "TCP hpts");
+#ifndef __Userspace__
 #ifdef RSS
 static int tcp_bind_threads = 1;
 #else
 static int tcp_bind_threads = 2;
+#endif
+#else
+static int tcp_bind_threads = 1;
 #endif
 static int tcp_use_irq_cpu = 0;
 static int hpts_does_tp_logging = 0;
@@ -2018,6 +2022,7 @@ tcp_hpts_mod_load(void)
 			if (intr_event_bind(hpts->ie, i) == 0)
 				bound++;
 		} else if (tcp_bind_threads == 2) {
+#ifndef __Userspace__
 			/* Find the group for this CPU (i) and bind into it */
 			for (j = 0; j < tcp_pace.grp_cnt; j++) {
 				if (CPU_ISSET(i, &tcp_pace.grps[j]->cg_mask)) {
@@ -2033,6 +2038,7 @@ tcp_hpts_mod_load(void)
 					}
 				}
 			}
+#endif
 		}
 		tv.tv_sec = 0;
 		tv.tv_usec = hpts->p_hpts_sleep_time * HPTS_USECS_PER_SLOT;

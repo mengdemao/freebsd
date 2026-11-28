@@ -1106,6 +1106,7 @@ kern_pselect(struct thread *td, int nd, fd_set *in, fd_set *ou, fd_set *ex,
 {
 	int error;
 
+#ifndef __Userspace__
 	if (uset != NULL) {
 		error = kern_sigprocmask(td, SIG_SETMASK, uset,
 		    &td->td_oldsigmask, 0);
@@ -1113,7 +1114,9 @@ kern_pselect(struct thread *td, int nd, fd_set *in, fd_set *ou, fd_set *ex,
 			return (error);
 		td->td_pflags |= TDP_OLDMASK;
 	}
+#endif
 	error = kern_select(td, nd, in, ou, ex, tvp, abi_nfdbits);
+#ifndef __Userspace__
 	if (uset != NULL) {
 		/*
 		 * Make sure that ast() is called on return to
@@ -1131,6 +1134,7 @@ kern_pselect(struct thread *td, int nd, fd_set *in, fd_set *ou, fd_set *ex,
 			ast_sched(td, TDA_PSELECT);
 		}
 	}
+#endif
 
 	return (error);
 }
@@ -1597,6 +1601,7 @@ kern_poll_kfds(struct thread *td, struct pollfd *kfds, u_int nfds,
 	} else
 		sbt = -1;
 
+#ifndef __Userspace__
 	if (uset != NULL) {
 		error = kern_sigprocmask(td, SIG_SETMASK, uset,
 		    &td->td_oldsigmask, 0);
@@ -1604,6 +1609,7 @@ kern_poll_kfds(struct thread *td, struct pollfd *kfds, u_int nfds,
 			return (error);
 		td->td_pflags |= TDP_OLDMASK;
 	}
+#endif
 
 	seltdinit(td);
 	/* Iterate until the timeout expires or descriptors become ready. */
@@ -1626,6 +1632,7 @@ kern_poll_kfds(struct thread *td, struct pollfd *kfds, u_int nfds,
 	if (error == EWOULDBLOCK)
 		error = 0;
 
+#ifndef __Userspace__
 	if (uset != NULL) {
 		/*
 		 * Make sure that ast() is called on return to
@@ -1640,6 +1647,7 @@ kern_poll_kfds(struct thread *td, struct pollfd *kfds, u_int nfds,
 		else
 			ast_sched(td, TDA_PSELECT);
 	}
+#endif
 
 	return (error);
 }

@@ -1838,6 +1838,7 @@ nospace:
 
 #endif
 
+#ifndef __Userspace__
 /*
  * Free pages from mbuf_ext_pgs, assuming they were allocated via
  * vm_page_alloc() and aren't associated with any object.  Complement
@@ -1940,12 +1941,14 @@ failed:
 	m_freem(m);
 	return (NULL);
 }
+#endif
 
 /*
  * Copy the contents of uio into a properly sized mbuf chain.
  * A compat KPI.  Users are recommended to use direct calls to backing
  * functions.
  */
+#ifndef __Userspace__
 struct mbuf *
 m_uiotombuf(struct uio *uio, int how, int len, int lspace, int flags)
 {
@@ -1983,6 +1986,65 @@ m_uiotombuf(struct uio *uio, int how, int len, int lspace, int flags)
 			return (NULL);
 	}
 }
+#else
+/*
+ * F-Stack m_uiotombuf compat: keep the simple 13.0-era semantics.
+ * F-Stack does not implement unmapped mbuf pools (M_EXTPG) nor
+ * mchain, so the 14.0+ branches are never reached at runtime.
+ */
+struct mbuf *
+m_uiotombuf(struct uio *uio, int how, int len, int align, int flags)
+{
+	struct mbuf *m, *mb;
+	int error, length;
+	ssize_t total;
+	int progress = 0;
+
+	/*
+	 * len can be zero or an arbitrary large value bound by
+	 * the total data supplied by the uio.
+	 */
+	if (len > 0)
+		total = (uio->uio_resid < len) ? uio->uio_resid : len;
+	else
+		total = uio->uio_resid;
+
+	/*
+	 * The smallest unit returned by m_getm2() is a single mbuf
+	 * with pkthdr.  We can't align past it.
+	 */
+	if (align >= MHLEN)
+		return (NULL);
+
+	/*
+	 * Give us the full allocation or nothing.
+	 * If len is zero return the smallest empty mbuf.
+	 */
+	m = m_getm2(NULL, max(total + align, 1), how, MT_DATA, flags);
+	if (m == NULL)
+		return (NULL);
+	m->m_data += align;
+
+	/* Fill all mbufs with uio data and update header information. */
+	for (mb = m; mb != NULL; mb = mb->m_next) {
+		length = min(M_TRAILINGSPACE(mb), total - progress);
+
+		error = uiomove(mtod(mb, void *), length, uio);
+		if (error) {
+			m_freem(m);
+			return (NULL);
+		}
+
+		mb->m_len = length;
+		progress += length;
+		if (flags & M_PKTHDR)
+			m->m_pkthdr.len += length;
+	}
+	KASSERT(progress == total, ("%s: progress != total", __func__));
+
+	return (m);
+}
+#endif /* __Userspace__ */
 
 /*
  * Copy the contents of uio into a properly sized mbuf chain.
